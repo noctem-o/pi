@@ -1,36 +1,21 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
+import baseConfig from "../../vitest.base.ts";
 
-export default defineConfig({
-	test: { environment: "node", include: ["test/**/*.test.ts"] },
-	resolve: {
-		conditions: ["source"],
-		alias: [
-			{
-				find: /^@earendil-works\/chord\/context$/,
-				replacement: fileURLToPath(new URL("../chord/src/context/index.ts", import.meta.url)),
-			},
-			{
-				find: /^@earendil-works\/chord$/,
-				replacement: fileURLToPath(new URL("../chord/src/index.ts", import.meta.url)),
-			},
-			{
-				find: /^@earendil-works\/pi-ai\/utils\/uuid$/,
-				replacement: fileURLToPath(new URL("../ai/src/utils/uuid.ts", import.meta.url)),
-			},
-			{
-				find: /^@earendil-works\/pi-telemetry$/,
-				replacement: fileURLToPath(new URL("../telemetry/src/index.ts", import.meta.url)),
-			},
-			{
-				find: /^@earendil-works\/pi-ai$/,
-				replacement: fileURLToPath(new URL("../ai/src/index.ts", import.meta.url)),
-			},
-			{
-				find: /^@earendil-works\/pi-agent-core$/,
-				replacement: fileURLToPath(new URL("../agent/src/index.ts", import.meta.url)),
-			},
-		],
-	},
-	ssr: { resolve: { conditions: ["source"] } },
-});
+export default mergeConfig(
+	baseConfig,
+	defineConfig({
+		test: { environment: "node", include: ["test/**/*.test.ts"] },
+		resolve: {
+			conditions: ["source"],
+			alias: [
+				// Source-only coding-agent experimental modules used by the Endophasia runtime layer.
+				{
+					find: /^@earendil-works\/pi-coding-agent\/experimental\/(.+)$/,
+					replacement: `${fileURLToPath(new URL("../coding-agent/src/experimental/", import.meta.url))}$1.ts`,
+				},
+			],
+		},
+		ssr: { resolve: { conditions: ["source"] } },
+	}),
+);
