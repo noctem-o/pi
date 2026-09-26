@@ -1,5 +1,7 @@
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import { JsonlSessionRepo } from "@earendil-works/pi-agent-core";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
@@ -133,5 +135,22 @@ describe("Endophasia runtime v0", () => {
 		expect(plainCatalogue).not.toContain(EndophasiaInspectorV0.id);
 		expect(catalogue.filter((id) => !plainCatalogue.includes(id))).toEqual([EndophasiaInspectorV0.id]);
 		expect(plainCatalogue.filter((id) => !catalogue.includes(id))).toEqual([]);
+	});
+
+	it("loads in plain Node with coding-agent's source resolver preloaded, without Vitest aliases", async () => {
+		const resolver = new URL("../../coding-agent/src/experimental/source-resolver.ts", import.meta.url);
+		const script = `
+			const server = await import(${JSON.stringify(new URL("../runtime/server.ts", import.meta.url).href)});
+			const worker = await import(${JSON.stringify(new URL("../runtime/session-worker.ts", import.meta.url).href)});
+			console.log(typeof server.startEndophasiaServer, typeof worker.runEndophasiaSessionWorker);
+		`;
+		const { stdout } = await promisify(execFile)(process.execPath, [
+			"--import",
+			resolver.href,
+			"--input-type=module",
+			"--eval",
+			script,
+		]);
+		expect(stdout.trim()).toBe("function function");
 	});
 });

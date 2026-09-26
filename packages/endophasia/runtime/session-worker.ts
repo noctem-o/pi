@@ -1,5 +1,6 @@
 // Source-only Endophasia application runtime, built on coding-agent's experimental Session worker. It is not part of
-// the @endophasia/core build or package exports.
+// the @endophasia/core build or package exports. spawnInternalProcess() preloads coding-agent's source resolver for
+// this entry, which resolves its @earendil-works/* imports through tsconfig paths.
 import {
 	consumeInternalProcessRole,
 	isDirectInternalProcessEntry,

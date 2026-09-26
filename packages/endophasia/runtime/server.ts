@@ -1,5 +1,7 @@
 // Source-only Endophasia application runtime, built on coding-agent's experimental server. It is not part of the
-// @endophasia/core build or package exports.
+// @endophasia/core build or package exports. Its @earendil-works/* imports resolve through tsconfig paths, which Node
+// does not apply itself: load it with coding-agent's source resolver preloaded, as pi-test.sh does, e.g.
+//   node --import <file URL of packages/coding-agent/src/experimental/source-resolver.ts> <host entry>
 import {
 	type RunningServer,
 	type StartServerOptions,
