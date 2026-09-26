@@ -14,19 +14,18 @@ A Pi-based research workbench for making agent computation<br>
 </p>
 
 <p>
-  <a href="#current-boundary"><img src="https://img.shields.io/badge/status-experimental%20fork-637d69?style=flat-square" alt="Status: experimental fork"></a>
+  <a href="#current-boundary"><img src="https://img.shields.io/badge/status-experimental-637d69?style=flat-square" alt="Status: experimental"></a>
   <a href="https://github.com/earendil-works/pi"><img src="https://img.shields.io/badge/upstream-Pi-536c85?style=flat-square" alt="Upstream: Pi"></a>
-  <a href="#runtime-model"><img src="https://img.shields.io/badge/runtime-adapter--oriented-2f6f4e?style=flat-square" alt="Runtime: adapter-oriented"></a>
+  <a href="#runtime-v0"><img src="https://img.shields.io/badge/runtime-multiprocess%20v0-2f6f4e?style=flat-square" alt="Runtime: multiprocess v0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-94765e?style=flat-square" alt="License: MIT"></a>
 </p>
 
 <p>
   <a href="#why-endophasia">Why</a> &nbsp; · &nbsp;
-  <a href="#mission-trace">Mission Trace</a> &nbsp; · &nbsp;
-  <a href="#continuity-and-context">Continuity</a> &nbsp; · &nbsp;
-  <a href="#work--dream">Work / Dream</a> &nbsp; · &nbsp;
+  <a href="#implemented-surfaces">Implemented</a> &nbsp; · &nbsp;
+  <a href="#runtime-v0">Runtime</a> &nbsp; · &nbsp;
   <a href="#architecture">Architecture</a> &nbsp; · &nbsp;
-  <a href="#current-boundary">Status</a>
+  <a href="#roadmap">Roadmap</a>
 </p>
 
 </div>
@@ -37,24 +36,25 @@ Most coding-agent interfaces show the prompt, the tools, and the answer.
 
 The interesting system is increasingly everything around the model:
 
-```text
+~~~text
 context selection
-reasoning budget
-retrieval
-verification
 runtime state
 branching
-peer review
-action proposals
+reasoning budget
+tool configuration
+verification
+usage and cost
 human steering
-```
+action proposals
+authority
+~~~
 
 **Endophasia turns that hidden harness into an instrument panel.**
 
 Not a chain-of-thought viewer. Not an agent swarm dashboard. A systems surface for seeing and steering what actually happened.
 
 > [!IMPORTANT]
-> **Endophasia is experimental.** The repository currently begins as a fork of [Pi](https://github.com/earendil-works/pi). Pi already provides a substantial agent/runtime substrate; the Endophasia controls, Mission Trace, Pallium integration, Magpie evidence surfaces, Deadbolt authority views, and local white-box instrumentation described below are research direction unless explicitly marked implemented.
+> **Endophasia is experimental, but it is no longer only architectural scaffolding.** The fork now contains versioned runtime projections, bounded steering/control primitives, a read-only Chord Inspector, and a source-only Endophasia runtime that launches real Pi Session workers and exposes the Inspector through Pi's multiprocess client/service path. Pallium integration, Magpie evidence surfaces, Deadbolt authority, Work / Dream policy, richer presentation clients, generic runtime adapters, and local white-box instrumentation remain future work.
 
 ## Why Endophasia
 
@@ -62,165 +62,306 @@ A capable agent should be allowed to reason flexibly without making its surround
 
 Endophasia is being shaped around five rules:
 
-```text
+~~~text
 preserve continuity
 instrument reality
 escalate cognition selectively
 keep plans inspectable
 keep authority outside the model
-```
+~~~
 
 A short version:
 
-```text
+~~~text
 Endophasia exposes.
 Pallium reasons.
 Instruments measure.
 Magpie remembers.
 Deadbolt permits.
-```
+~~~
 
 No line implies another.
 
+The project tries to keep several distinctions explicit:
+
+- observation is not interpretation;
+- accepted input is not executed work;
+- configured state is not necessarily in-flight state;
+- operational history is not epistemic standing;
+- a valid plan is not permission to execute it;
+- more reasoning does not grant more authority.
+
 ## Why Pi
 
-Pi is a particularly useful substrate for Endophasia because its public surfaces already expose many of the distinctions the project wants to make visible rather than simulate.
+Pi is a useful substrate because it exposes concrete runtime distinctions that Endophasia can project instead of simulating.
 
-Relevant upstream primitives include:
+The parts Endophasia currently leans on most are:
 
-```text
-AgentSession / AgentSessionRuntime
-  ├─ prompt
-  ├─ steer
-  ├─ followUp
-  ├─ abort
-  ├─ event subscriptions
-  ├─ model + thinking-level control
-  ├─ persistent session trees
-  ├─ compaction + branch summaries
-  └─ session replacement / fork / resume
+~~~text
+AgentHarness / Session / AgentLane
+  ├─ durable lane history and ancestry
+  ├─ atomic per-lane watch snapshots
+  ├─ steer + follow-up queues
+  ├─ durable operation outcomes
+  ├─ session usage accounting
+  ├─ model / thinking / active-tool configuration
+  └─ lifecycle events
 
-extensions
-  ├─ tools
-  ├─ lifecycle events
-  ├─ commands
-  ├─ providers
-  ├─ resource loading
-  └─ UI surfaces
+remote runtime
+  ├─ Pi client
+  ├─ transport-neutral protocol
+  ├─ server + Session-worker split
+  ├─ presentation attachments
+  └─ Session service routing
 
-supporting packages
-  ├─ pi-tui        terminal presentation
-  ├─ pi-telemetry  passive typed diagnostics
-  ├─ Chord         services, facets, replicated state
-  └─ pi-durable    operational conversation/task/document durability
-```
+Chord
+  ├─ typed services
+  ├─ trusted host facets
+  ├─ reloadable plugin facets
+  ├─ replicated state
+  └─ transport-independent remote service calls
+~~~
 
 These are **upstream Pi capabilities**, not Endophasia inventions.
 
-Endophasia should use them where they fit and keep its own semantics narrow enough to inspect, test, and replace.
+Endophasia adds narrow semantics on top: projections that say exactly what they observed, receipts that do not claim more than the underlying runtime established, and host-owned composition where authority must stay outside reloadable plugins.
+
+## Implemented surfaces
+
+The current Endophasia core is intentionally small and versioned.
+
+| Surface | Status | What it establishes |
+| :--- | :--- | :--- |
+| **Mission Trace v0** | Implemented | Passive projection of selected <code>AgentHarness.events</code> lifecycle events into a bounded mission / turn / tool timeline. |
+| **Continuity v0** | Implemented | One lane's durable active ancestry plus Pi's compaction-bounded context-source window. It is **not** the final provider-visible prompt. |
+| **Steering Controls v0** | Implemented | STEER, QUEUE, and STOP mapped to Pi's durable queues / abort request with acceptance-or-request receipts. |
+| **Session Overview v0** | Implemented | Payload-minimal lane inventory with tips and open operations. Consistency is explicitly **per lane**, not a session-wide atomic snapshot. |
+| **Durable Outcomes v0** | Implemented | Read-only projection of Pi's immutable terminal operation result for an operation ID. |
+| **Runtime Metrics v0** | Implemented | Session-wide cumulative message, token, cache, reasoning, and accounted-cost totals from Pi's maintained stats. |
+| **Usage Ledger v0** | Implemented | Forward paging over durable usage rows with explicit cursor semantics. |
+| **Usage Feed v0** | Implemented | Durable catch-up followed by a gap-safe live handoff; reconnects are at-least-once when the caller persists the cursor. |
+| **Runtime Control Deck v0** | Implemented | Read/configure lane model, thinking level, and active tools with read-after-write receipts. Configuration changes are not transactional with in-flight requests. |
+| **Endophasia Inspector v0** | Implemented | Read-only Chord service <code>endophasia.inspector.v0</code>; each call captures a fresh Session Overview. |
+| **Endophasia Runtime v0** | Implemented, source-only | Endophasia-owned server / Session-worker composition using the normal coding-agent bootstrap and a trusted Inspector host facet over the real Pi multiprocess path. |
+
+The implementation deliberately does **not** imply a browser cockpit, epistemic memory, action authority, or a generic runtime-adapter framework. Those are separate layers.
 
 ## Mission Trace
 
-The centre of Endophasia should be one **Mission Trace**: a real, observable timeline of work.
+Mission Trace v0 is the first implemented execution projection: a real, observable timeline derived from selected harness lifecycle events.
 
-```text
+The broader idea remains larger than v0:
+
+~~~text
 08:14  mission started
 08:15  primary inspected runtime/
 08:18  hypothesis H1 created
 08:21  test contradicted H1
 08:24  independent challenge requested
-        └─ checker found a counterexample
 08:29  candidate patch
 08:31  tests passed
 08:33  benchmark regressed
 08:36  candidate rejected
 08:43  second candidate verified
-```
+~~~
 
-The default model is continuity-first:
+Today, v0 stays deliberately closer to what Pi can establish directly: mission/run lifecycle, turns, assistant completion, tool start/end, suspension/resumption, and terminal run status.
 
-```text
-task
- │
- ▼
-PRIMARY AGENT
- │
- ├─ inspect
- ├─ reason
- ├─ edit
- ├─ test
- └─ retain orientation
-      │
-      │ when useful
-      ▼
- independent peer
-      │
-   challenge
-      │
-      ▼
-PRIMARY AGENT
-```
+The rule is simple:
 
-Peers are useful for **independent verification, adversarial challenge, orthogonal search, or genuine isolation**. They are not the default way to divide ordinary sequential thought.
-
-> Parallelize search when it helps. Preserve continuity when it matters.
-
-The trace should contain observable semantic events, not hidden private chain-of-thought:
-
-```text
-mission.started
-turn.started
-context.changed
-tool.started
-tool.finished
-benchmark.recorded
-verification.requested
-verification.passed
-peer.challenge.completed
-proposal.created
-approval.requested
-mission.completed
-```
-
-Pi already exposes real lifecycle events for agent, turn, message, tool, queue, retry, compaction, and settlement activity. Endophasia should project only the semantics it can establish from those events.
-
-If the UI says something happened, a real event should exist underneath it.
+> If the interface says something happened, a real event should exist underneath it.
 
 Missing should remain missing.
 
+Peers may eventually be useful for independent verification, adversarial challenge, orthogonal search, or genuine isolation. They are not the default way to divide ordinary sequential thought.
+
 ## Continuity and context
 
-Pi makes continuity observable in ways a flat chat transcript does not.
+Continuity v0 captures one lane at one durable tip:
 
-Its session representation can preserve branching, compaction, model and thinking-level changes, context edits, labels, and custom records. That creates a useful distinction:
+~~~text
+durable active ancestry
+        │
+        ├─ messages
+        ├─ compactions
+        ├─ branch summaries
+        └─ custom records
+             │
+             ▼
+Pi context-source window
+             │
+             ▼
+future provider request construction
+~~~
 
-```text
-RAW HISTORY
+The context-source window is **not** the final provider-visible prompt.
+
+That distinction matters. History can survive even when it no longer contributes to the next request, and compaction is a projection boundary rather than a rewrite of what happened.
+
+A future richer context inspector may explain more of the final request assembly, but it should never invent parity where the runtime does not expose it.
+
+## Steering and control
+
+Long-running agents need richer interaction than another generic chat message.
+
+Endophasia currently implements three bounded steering operations:
+
+~~~text
+STEER   → Pi steer queue
+QUEUE   → Pi follow-up queue
+STOP    → abort request for the run Endophasia actually observed
+~~~
+
+Receipts report acceptance or request state. They do not claim that queued text was later consumed or that an aborted run reached a particular terminal state.
+
+Runtime Control Deck v0 separately exposes concrete lane configuration:
+
+~~~text
+configured model
+thinking level
+active tools
+open operation
+~~~
+
+Setters perform a Pi mutation followed by readback. They are not transactions.
+
+A configuration change applies to later generation snapshots; an in-flight provider request keeps the configuration it already captured.
+
+Broader controls such as Epistemic Rigour, Explore, Verify, Compute Appetite, and Work / Dream remain policy concepts. They should eventually compile to explicit runtime changes where a substrate can actually support them.
+
+## Instruments and evidence
+
+If ordinary software can establish something mechanically, Endophasia should prefer that instrument before asking a model to judge itself.
+
+Implemented read-only instruments already include:
+
+~~~text
+Mission Trace
+Session Overview
+Continuity
+Durable Outcomes
+Runtime Metrics
+Usage Ledger
+Usage Feed
+Control State
+~~~
+
+They intentionally preserve distinctions such as:
+
+~~~text
+cumulative accounting ≠ current context
+accepted work         ≠ terminal outcome
+usage row             ≠ causal attribution
+configured model      ≠ captured in-flight model
+runtime record        ≠ epistemic standing
+~~~
+
+A useful future hierarchy remains:
+
+~~~text
+deterministic observation
+        ↓
+derived measurement
+        ↓
+independent verification
+        ↓
+model interpretation
+~~~
+
+Evidence should retain **how it was obtained**.
+
+## Runtime v0
+
+Pi is the **current concrete runtime**, not yet one interchangeable adapter behind a finished Endophasia runtime contract.
+
+The implemented path is:
+
+~~~text
+trusted host
     │
-    ├─ original entries
-    ├─ alternate branches
-    ├─ compactions
-    ├─ context edits
-    └─ runtime changes
-         │
-         ▼
-ACTIVE CONTEXT PROJECTION
-         │
-         ▼
-what the next model request actually sees
-```
+    ▼
+startEndophasiaServer()
+    │
+    ▼
+Pi experimental server
+    │
+    ▼
+SessionWorkerManager
+    │
+    ▼
+Endophasia Session-worker entry
+    │
+    ▼
+normal coding-agent worker bootstrap
+    │
+    ├─ ModelRuntime
+    ├─ SettingsManager
+    ├─ tools
+    ├─ AgentHarness
+    ├─ main lane
+    ├─ reloadable Session plugins
+    │
+    └─ trusted Endophasia Inspector facet
+             │
+             ▼
+      Chord Session services
+             │
+             ▼
+         ordinary Pi client
+~~~
 
-Endophasia should make that relationship legible.
+The Endophasia application layer is deliberately **source-only** in <code>packages/endophasia/runtime/</code>.
 
-A context view may eventually answer questions such as:
+The built private <code>@endophasia/core</code> library remains separate from coding-agent's experimental server / worker internals.
 
-- Which branch is active?
-- What material survived compaction?
-- Which historical entries no longer contribute to current model context?
-- What model, thinking level, tools, or prompt sections changed?
-- Which observations are raw history and which are derived projections?
+Runtime v0 does not create a second harness implementation. The custom Endophasia worker reuses Pi's normal coding-agent worker bootstrap, then contributes the Inspector as a trusted host facet.
 
-A projection is not the underlying history. A summary is not the original evidence. A branch is not a separate truth.
+Reloadable Session plugins still receive only the Chord facet environment; they do not gain ambient <code>AgentHarness</code> authority.
+
+## Chord and presentation surfaces
+
+Chord is already part of Runtime v0.
+
+The current Inspector path is:
+
+~~~text
+AgentHarness
+    │
+    ▼
+createEndophasiaInspectorFacetV0()
+    │
+    ▼
+trusted worker host facet
+    │
+    ▼
+Chord remote service
+    │
+    ▼
+Pi Session routing
+    │
+    ▼
+ordinary client
+~~~
+
+Today the remote Inspector exposes only **Session Overview v0**.
+
+The other Endophasia projections remain library surfaces until each one earns a narrow remote contract.
+
+That gives the next presentation experiment a useful shape:
+
+~~~text
+Pi / Endophasia runtime
+        │
+        ├─ transcript + ordinary Pi services
+        └─ Endophasia Inspector
+                 │
+                 ▼
+        browser / desktop cockpit
+~~~
+
+The cockpit should be a projection and control surface, never a second source of truth.
+
+Browser transport is still an open design choice in this fork. Upstream has explored web and WebSocket approaches, but Endophasia should not assume a stable upstream browser transport until one exists. WebMCP is better treated as a later progressive enhancement for selected browser-side tools, not as the foundation of the runtime or authority model.
 
 ## WORK / DREAM
 
@@ -239,104 +380,21 @@ Broader retrieval. More hypotheses retained. Counterfactuals. Stronger falsifica
 </tr>
 </table>
 
-Dream does not mean "spawn more agents."
+Work / Dream is **not implemented policy yet**.
 
-```text
+It is a future policy layer for changing how aggressively the system explores, verifies, delegates, and spends compute while keeping authority unchanged.
+
+~~~text
 more cognition ≠ more authority
 more branches  ≠ more truth
 more agreement ≠ more permission
-```
-
-## Steering
-
-Long-running agents need richer interaction than another chat message.
-
-```text
-STEER      change the active trajectory
-QUEUE      deliver after current work settles
-ANNOTATE   add context without replacing the objective
-CHALLENGE  ask an independent checker
-STOP       terminate future work
-```
-
-Pi already gives Endophasia two unusually useful native distinctions:
-
-```text
-steer()    → deliver after the current assistant turn and its tool calls,
-             before the next model call
-
-followUp() → deliver at a run finish boundary when no earlier
-             conversational trigger remains
-```
-
-Endophasia should preserve those distinctions rather than flattening them into generic chat messages.
-
-Steering Controls v0 now maps STEER to Pi's steer queue, QUEUE to its follow-up queue, and STOP to a durable abort request for the observed run. Receipts report acceptance, not consumption or terminal outcome. Pi currently also accepts steer and follow-up input while idle; later execution still follows Pi's queue rules.
-
-ANNOTATE and CHALLENGE require their own explicit semantics if implemented.
-
-## The control deck
-
-| Control | Meaning |
-| :--- | :--- |
-| **Reasoning** | Provider-native or local reasoning / thinking budget. |
-| **Epistemic Rigour** | Named verification and evidence policy. |
-| **Explore** | Breadth of materially different alternatives considered. |
-| **Verify** | Falsification, deterministic checks, and independent-review budget. |
-| **Compute Appetite** | How readily more tokens, calls, tests, or branches are spent under uncertainty. |
-| **Tool Initiative** | How readily the runtime inspects, retrieves, benchmarks, or proposes actions. |
-| **Latent Deliberation** | White-box intervention where the runtime actually supports it. |
-| **J-space** | Experimental latent-state observation for compatible local models. |
-
-Controls should resolve to explicit runtime configuration.
-
-Pi already provides concrete configuration surfaces for models, thinking levels, active tools, resources, prompt sections, queue behaviour, compaction, retries, and providers. Endophasia policies can compose those primitives, but should not pretend every control maps cleanly to every runtime.
-
-Semantic policy should prefer named, versioned positions over meaningless precision:
-
-```text
-EXPLORATORY ─ BALANCED ─ RIGOROUS ─ ADVERSARIAL
-```
-
-A slider is useful only if the system can say what moving it changed.
-
-## Instruments and evidence
-
-If ordinary software can establish something mechanically, Endophasia should prefer that instrument before asking a model to judge itself.
-
-```text
-compiler
-tests
-benchmark
-Git state
-CI
-runtime metrics
-static analysis
-```
-
-A useful hierarchy is:
-
-```text
-deterministic observation
-        ↓
-derived measurement
-        ↓
-independent verification
-        ↓
-model interpretation
-```
-
-Evidence should retain **how it was obtained**. An exact observation, sampled metric, derived claim, historical record, external source, and model report are not interchangeable.
-
-Pi's `pi-telemetry` package is useful here as a diagnostic substrate: its own contract explicitly treats telemetry as passive diagnostic data rather than business state. Endophasia should keep the same separation.
-
-Mission Trace, telemetry, and epistemic evidence are related views, not one undifferentiated log.
+~~~
 
 ## Plans are not effects
 
 A model proposal should be inspectable before it becomes consequential.
 
-```text
+~~~text
 model intent
     │
     ▼
@@ -345,20 +403,15 @@ structured proposal
     ▼
 inspectable plan
     │
-    ├─ operations
-    ├─ dependencies
-    ├─ bounds
-    └─ required authority
-    │
     ▼
 review / policy
-```
+~~~
 
 A valid plan is still only a proposal.
 
-Consequential effects belong behind an explicit authority boundary:
+The intended consequential-action boundary remains:
 
-```text
+~~~text
 agent
   │ proposes
   ▼
@@ -374,45 +427,29 @@ DEADBOLT
        │
        ▼
 real effect
-```
+~~~
 
-This boundary matters especially on Pi.
-
-Upstream Pi intentionally does **not** provide a built-in permission system restricting filesystem, process, network, or credential access. Extensions run with the permissions available to the Pi process unless an external sandbox or isolation mechanism constrains them.
-
-An extension hook that blocks a tool call can be useful policy. It is not automatically the root of authority.
+Upstream Pi intentionally does not provide a built-in permission system that turns tool execution into an external authority boundary. Extension hooks can be useful policy; they are not automatically the root of authority.
 
 ## Operational state is not epistemic memory
 
-Pi also exposes richer operational persistence than Endophasia had to assume before.
+Pi operational history, Mission Trace, and future Magpie evidence answer different questions.
 
-`pi-durable` / Pico describes durable conversations, tasks, entries, submissions, and documents. Chord can project committed state to local or remote consumers.
+~~~text
+Pi runtime
+  sessions
+  lanes
+  operations
+  usage
+  tools
 
-Those primitives may be useful for:
-
-```text
-mission progress
-task state
-review documents
-UI projections
-branch-aware work state
-restart continuity
-```
-
-They should not silently become Magpie.
-
-```text
-Pi / Pico
-  operational continuity
-  conversations
-  tasks
-  documents
-
-Mission Trace
-  normalized observable execution
+Endophasia
+  runtime projections
+  steering/control semantics
+  presentation surfaces
 
 Pallium
-  cognition / coordination semantics
+  future cognition / coordination policy
 
 Magpie
   claims
@@ -425,269 +462,214 @@ Deadbolt
   permission
   effects
   receipts
-```
+~~~
 
-Different histories answer different questions.
+Persistence does not make a claim true.
 
-## Runtime model
+Execution does not make a result authoritative.
 
-Pi is the first reference runtime, not a permanent semantic dependency.
-
-```text
-                     ENDOPHASIA
-                         │
-                   runtime contract
-                         │
-          ┌──────────────┼───────────────┐
-          ▼              ▼               ▼
-      Pi runtime      remote harness   future adapter
-          │              │               │
-      sessions          agents          services
-      tools             machines        workflows
-      models
-```
-
-A runtime adapter needs surprisingly little conceptually:
-
-```text
-attach
-invoke
-observe
-steer
-queue
-cancel
-resume
-identify workspace
-report capability
-```
-
-Pi may provide substantially more than that. Endophasia should use capability discovery rather than pretending different substrates are identical.
-
-## Chord and presentation surfaces
-
-Pi's standalone **Chord** package creates an interesting path for Endophasia beyond one terminal process.
-
-Chord provides typed services, facets, replicated state, lifecycle management, and a transport-independent remote-service boundary.
-
-A future Endophasia deployment could use those primitives like this:
-
-```text
-                    ENDOPHASIA
-
-                 shared typed services
-                         │
-              ┌──────────┼──────────┐
-              ▼          ▼          ▼
-          worker facet  TUI facet  desktop/web facet
-              │
-              ▼
-          Pi runtime
-```
-
-The attraction is not distributed complexity for its own sake.
-
-It is the possibility that a worker, TUI, and richer presentation client can consume the same explicit projections without each inventing its own state model.
-
-This remains exploratory. Chord is infrastructure, not an Endophasia requirement.
+Human approval does not automatically make a proposition epistemically settled.
 
 ## Architecture
 
-```mermaid
+~~~mermaid
 flowchart TB
-    H["Human"] --> E["Endophasia\nsteering · Mission Trace · controls · continuity"]
+    H["Human"] --> PRES["Presentation\nTUI today · richer cockpit next"]
 
-    E --> R["Runtime boundary\nPi first · adapters later"]
-    R --> PI["Pi AgentSession / runtime"]
-    PI --> MODEL["Models\nAPI · local · open-weight"]
-    PI --> TOOLS["Tools / extensions"]
-    PI --> OBS["Observable runtime events"]
+    PRES --> CLIENT["Pi client / Session attachment"]
+    CLIENT --> ER["Endophasia Runtime v0\nsource-only server + worker entry"]
+    ER --> PI["Pi Session worker\nnormal coding-agent bootstrap"]
+    PI --> AH["AgentHarness / lanes"]
 
-    OBS --> MT["Mission Trace"]
-    PI --> CTX["Session tree / context projection"]
-    MT --> E
-    CTX --> E
+    AH --> CORE["Endophasia core projections\nMission Trace · Continuity · Steering\nOverview · Outcomes · Metrics · Usage · Control"]
+    AH --> INS["Inspector host facet"]
+    INS --> CH["Chord remote service\nendophasia.inspector.v0"]
+    CH --> CLIENT
 
-    E --> P["Pallium\ncognition · coordination · evaluation"]
+    CORE -. future policy / orchestration .-> P["Pallium\ncognition · coordination · evaluation"]
+    CORE -. future evidence adapters .-> M["Magpie\nprovenance · epistemic standing"]
+    P -. proposals .-> D["Deadbolt\nauthority · consent · capability"]
+    D -. authorised effects .-> FX["Consequential effect"]
+    FX -. receipts / observations .-> M
+    FX -. runtime observations .-> CORE
 
-    PI --> INST["Instruments\ntests · CI · benchmarks · observers"]
-    INST --> EV["Evidence"]
-    P --> EV
-    EV --> M["Magpie\nprovenance · replay · standing"]
-
-    P --> PLAN["Structured proposal"]
-    PLAN --> D["Deadbolt\nauthority · consent · capability"]
-    D --> FX["Consequential effect"]
-    FX --> REC["Receipt / observation"]
-    REC --> M
-    REC --> E
-
-    CH["Chord / pi-tui\noptional presentation fabric"] -.-> E
-    DUR["pi-durable\noptional operational persistence"] -.-> R
-```
+    AH -. compatible local runtimes .-> J["J-space / latent instrumentation"]
+~~~
 
 ### The boundary matters
 
-| Layer | Owns | Must not silently become |
+| Layer | Owns today / intended ownership | Must not silently become |
 | :--- | :--- | :--- |
-| **Endophasia** | Human steering, visualization, cognitive controls, traces, continuity views. | Truth or execution authority. |
-| **Pallium** | Cognitive continuity, selective coordination, evaluation. | Canonical epistemic history or permission. |
-| **Runtime adapter** | Sessions, tools, provider/process lifecycle. | Root of trust merely because it executes. |
-| **Pi operational state** | Session history, branches, task/document state where adopted. | Epistemic standing. |
+| **Endophasia core** | Versioned runtime projections and bounded steering/control semantics. | Truth, hidden chain-of-thought, or execution authority. |
+| **Endophasia runtime** | Trusted application composition of Pi server/worker plus host facets. | A second epistemic store or a plugin escape hatch. |
+| **Pi runtime** | Sessions, lanes, model/tool execution, durable operational records, remote routing. | Root of trust merely because it executes. |
+| **Presentation client** | Human-visible projections and future controls. | Canonical state. |
+| **Pallium** | Future cognition/coordination policy and evaluation. | Canonical epistemic history or permission. |
 | **Instruments** | Measurements and bounded observations. | General reasoning agents. |
 | **Magpie** | Evidence, provenance, replayable epistemic history, standing. | General orchestration. |
 | **Deadbolt** | Consequential-action authority and receipts. | Cognition or memory. |
-| **Local latent layer** | White-box observation and intervention. | Proof that an interpretation is true. |
+| **Local latent layer** | Optional white-box observation/intervention. | Proof that an interpretation is true. |
 
 ## J-space
 
 J-space is the deliberately white-box edge of the project.
 
-Where local runtimes expose compatible internal state, Endophasia may experiment with latent readouts and interventions.
+Where compatible local runtimes expose internal state, Endophasia may eventually experiment with latent readouts and interventions.
 
-```text
+~~~text
 model state → instrumentation → projection → J-SPACE VIEW
-```
+~~~
 
-The projection is a view, not the underlying representation itself. For API-only models, **UNAVAILABLE** is better than fake parity.
+The projection is a view, not the representation itself.
 
-Pi's provider and streaming extension surfaces may make it easier to connect experimental local runtimes, but provider events are not themselves latent-state access.
+For API-only models, **UNAVAILABLE** is better than fake parity.
 
-J-space is research instrumentation, not the foundation of the product.
-
-## Design rules
-
-- **Telemetry should be real.** Decorative agent activity is worse than no telemetry.
-- **Continuity is valuable.** Do not create a handoff without a reason.
-- **History and context are different.** A context projection must not rewrite what actually happened.
-- **Mechanical evidence beats self-report.** Completion is a claim until something checks it.
-- **Independent review should actually be independent.** Isolation is useful when it reduces anchoring.
-- **Plans are not effects.** Proposal, approval, execution, and receipt are separate states.
-- **Reasoning is not authority.** More compute never widens permission.
-- **Operational state is not epistemic standing.** Persistence does not make a claim true.
-- **Capability-aware UI beats fake parity.** Different runtimes expose different surfaces.
-- **A feature that cannot beat a simpler baseline stays experimental.**
+J-space is research instrumentation, not the foundation of the system.
 
 ## Current boundary
 
-Endophasia currently starts from the live [Pi](https://github.com/earendil-works/pi) codebase.
+Endophasia remains an experimental fork of the live [Pi](https://github.com/earendil-works/pi) codebase, but it is now beyond the initial substrate-migration stage.
 
-The fork inherits Pi's agent loop, coding-agent CLI, models/providers, tools, extensions, persistent session machinery, TUI, RPC mode, Chord, telemetry primitives, and other upstream infrastructure.
+The implemented boundary is:
 
-Those are upstream capabilities, not Endophasia inventions.
+~~~text
+@endophasia/core
+  versioned projections and bounded control semantics
+        │
+        └── no UI, no epistemic authority, no action authority
 
-The active fork is currently at the **substrate migration / architecture foundation** stage. The previous Cline-based prototype established useful Mission Trace semantics. In `packages/endophasia`, the Pi fork implements Mission Trace v0 as a passive `AgentHarness.events` lifecycle projection, Continuity v0 as a read-only, lane-scoped projection of durable ancestry and Pi's compaction-bounded context-source window, and Steering Controls v0 as bounded STEER / QUEUE / STOP calls with payload-minimal receipts and state. These surfaces have no persistence or UI. The context-source window is not the final provider-visible prompt.
+packages/endophasia/runtime/
+  source-only application composition
+        │
+        ├── startEndophasiaServer()
+        ├── Endophasia Session-worker entry
+        └── Inspector installed as trusted host facet
 
-Not yet complete as Endophasia features in this fork:
+real Pi multiprocess runtime
+        │
+        └── ordinary Pi client can discover and invoke
+            endophasia.inspector.v0
+~~~
 
-```text
-full session-wide branch inventory and exact provider-visible context inspection
-cognitive control deck
-Work / Dream policies
-runtime adapter boundary
-Endophasia-level annotate / challenge semantics
-deterministic instrument panel
-selective peer-checker flow
-Pallium integration
-Magpie evidence view
-Deadbolt action review
-Chord-backed multi-surface cockpit
-local latent instrumentation / J-space
-```
+Important limitations remain explicit:
 
-This list is deliberately explicit so the README cannot be mistaken for a feature-complete release announcement.
+- only Session Overview v0 is remotely exposed through Inspector v0;
+- Session Overview is per-lane consistent, not a session-wide atomic snapshot;
+- Continuity v0 exposes a compaction-bounded context-source window, not the exact provider-visible prompt;
+- Steering and Control receipts record acceptance/readback, not eventual execution or success;
+- Runtime Metrics and usage surfaces are accounting projections, not causal attribution or provider invoices;
+- Runtime v0 is source-only and follows Pi's experimental server / worker path;
+- the custom Session-worker entry governs newly launched workers; replacement-server discovery does not attest worker provenance;
+- automatic cold activation does not carry the custom entry;
+- compiled Bun cannot launch an external custom entry through the current Pi process helper;
+- there is no browser cockpit, Magpie adapter, Deadbolt authority path, Pallium policy engine, generic runtime-adapter API, or J-space implementation yet.
+
+That boundary is intentional: implemented observations should stay smaller than the claims the interface eventually wants to make.
 
 ## Roadmap
 
-The preferred sequence is deliberately vertical:
+The foundation sequence through the first real runtime is now complete:
 
-```text
-0  identity + Pi upstream hygiene
-     ↓
-1  Mission Trace projection from Pi runtime events
-     ↓
-2  continuity + active-context inspector
-     ↓
-3  native steer / queue integration
-     ↓
-4  deterministic verification / instrument surface
-     ↓
-5  selective independent checker
-     ↓
-6  Work / Dream + versioned cognitive policies
-     ↓
-7  structured proposal / action review
-     ↓
-8  Magpie evidence + Deadbolt authority seams
-     ↓
-9  optional Chord / durable presentation and persistence experiments
-     ↓
-10 additional runtime adapters
-     ↓
-11 local white-box / J-space research
-```
-
-The first important demonstration is not a swarm. It is one complete, legible loop:
-
-```text
-human task
-   ↓
-primary agent
-   ↓
-tools + instruments
-   ↓
-optional independent challenge
-   ↓
-evidence
-   ↓
-structured proposal
-   ↓
-authority review
-   ↓
-effect
-   ↓
-receipt
-```
-
-Before that full loop, the immediate Pi milestone is smaller:
-
-```text
-Pi task
-  ↓
-real runtime events
-  ↓
+~~~text
 Mission Trace
   ↓
-continuity / context view
+Continuity
   ↓
-human steer or queue
-```
+Steering
+  ↓
+Session Overview
+  ↓
+Durable Outcomes + Runtime Metrics + Usage
+  ↓
+Runtime Control Deck
+  ↓
+Chord Inspector
+  ↓
+trusted host-facet / custom-worker seams
+  ↓
+Endophasia Runtime v0
+~~~
+
+The next useful sequence is presentation-first and initially read-only:
+
+~~~text
+1  browser / presentation transport proof
+     ordinary client attaches to Endophasia Runtime v0
+     and consumes typed Session services
+
+2  read-only cockpit v0
+     Session Overview + existing Pi transcript/model state
+     with no new canonical state
+
+3  selectively widen read-only remote projections
+     Continuity / metrics / outcomes / usage only where
+     each service contract remains narrow and honest
+
+4  explicit interaction boundary
+     expose steering/control only with receipts and
+     capability semantics preserved across transport
+
+5  Work / Dream + selective challenge policy
+     likely where Pallium begins to earn a concrete role
+
+6  Magpie read-only evidence adapter
+     then governed epistemic contribution rather than
+     treating runtime state as belief
+
+7  Deadbolt-backed consequential action path
+     proposal → authority → effect → receipt
+
+8  optional WebMCP presentation enhancement
+     useful browser-side tools, never the root authority path
+
+9  additional runtime adapters
+
+10 local white-box / J-space research
+~~~
+
+The first product-shaped demonstration is now smaller and clearer than the original all-layer vision:
+
+~~~text
+real Pi Session
+   ↓
+Endophasia runtime
+   ↓
+typed observations
+   ↓
+read-only cockpit
+   ↓
+human understands what is happening
+~~~
+
+Only after that surface is trustworthy should Endophasia add richer policy, epistemic memory, or consequential authority.
 
 ## Upstream
 
 Endophasia is an independent experimental fork of [Pi](https://github.com/earendil-works/pi).
 
-The intent is to stay close enough to upstream that Pi remains recognizable and updateable. Endophasia-specific semantics should prefer narrow packages, projections, adapters, and extensions over invasive changes to the underlying agent loop.
+The intent is to stay close enough to upstream that Pi remains recognizable and updateable. Endophasia-specific semantics should prefer narrow packages, projections, host facets, and application composition over invasive changes to the underlying agent loop.
 
-```text
+~~~text
 Pi
  │
  ├─ agent runtime
  ├─ providers
- ├─ sessions
+ ├─ sessions / lanes
  ├─ tools / extensions
- ├─ TUI / RPC
+ ├─ remote client / protocol
+ ├─ server / Session workers
  ├─ Chord
- └─ durable / telemetry primitives
+ └─ telemetry / durable primitives
         │
         ▼
    Endophasia
         │
-        ├─ Mission Trace
-        ├─ continuity views
-        ├─ cognitive controls
-        ├─ evidence surfaces
-        └─ governance surfaces
-```
+        ├─ versioned runtime projections
+        ├─ bounded steering / control
+        ├─ Chord Inspector
+        ├─ source-only Pi runtime composition
+        └─ future cognition / evidence / governance layers
+~~~
 
 For upstream Pi usage, development, package documentation, and contribution rules, see:
 
@@ -695,7 +677,7 @@ For upstream Pi usage, development, package documentation, and contribution rule
 - [Pi documentation](https://pi.dev/docs/latest)
 - [Pi SDK](https://pi.dev/docs/latest/sdk)
 - [Pi extensions](https://pi.dev/docs/latest/extensions)
-- [local `AGENTS.md`](AGENTS.md) for the inherited repository development rules
+- [local <code>AGENTS.md</code>](AGENTS.md) for inherited repository development rules
 
 Unless Endophasia explicitly changes a package contract, upstream Pi documentation remains the reference for that package.
 
@@ -711,4 +693,4 @@ It should not invent cognition for decoration.
 
 ---
 
-**Status:** experimental · research-first · Pi-based · upstream-aware
+**Status:** experimental · research-first · Pi-based · real multiprocess runtime v0 · upstream-aware
